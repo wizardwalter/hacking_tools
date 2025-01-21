@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import subprocess
-import optparse
+import optparse #deprecated
 import re
 
 def getArguments():
