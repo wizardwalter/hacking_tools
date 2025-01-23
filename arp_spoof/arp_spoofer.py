@@ -54,4 +54,4 @@ except KeyboardInterrupt:
     print("\n[+] Quitting.... Happy Hacking:)\n[+] Restoring ARP Tables")
     restore(target_ip, gateway_ip)
     restore(gateway_ip, target_ip)
-#to run this make sure you allow packet forwarding using echo 1 > /porc/sys/net/ipv4/ip_forward, 0 to turn off
+#to run this make sure you allow packet forwarding using echo 1 > /proc/sys/net/ipv4/ip_forward, 0 to turn off
