@@ -14,9 +14,14 @@ Welcome to **Hacking Tools**, an ever-growing collection of hacking and penetrat
 ## 📂 Directory Structure
 ```bash
 hacking_tools/
-│── sniffing/
-│   ├── packet_sniffer.py
-│   ├── arp_spoof.py
+│── malware/
+│   ├── disable_windows_defender
+│   ├── download_execute_and_report
+│   ├── download_file
+│   ├── execute_commands
+│   ├── keylogger
+│   ├── reverse_backdoor
+│   ├── trojan
 │── web_hacking/
 │   ├── sql_injection.py
 │   ├── xss_scanner.py
